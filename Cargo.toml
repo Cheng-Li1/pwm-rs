@@ -1,0 +1,8 @@
+[package]
+name = "pwm_driver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pwm-hal = { path = "pwm_hal/rockchip" }
+pwm-protocol = { path = "pwm_protocol" }

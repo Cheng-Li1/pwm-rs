@@ -1,0 +1,11 @@
+[package]
+name = "pwm-protocol"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cheng Li 李澄 <lichengchaoreng@gmail.com>"]
+
+[lib]
+name = "pwm_protocol"
+path = "lib.rs"
+
+[dependencies]
