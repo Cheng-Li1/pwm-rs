@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<system>
+    <!-- Device memory region -->
+    <memory_region name="pwm" size="0x1000" phys_addr="0xff420000"/>
+    <memory_region name="grf" size="0x1000" phys_addr="0xff77e000"/>
+
+    <protection_domain name="pwm_driver" priority="100" >
+        <program_image path="pwm_driver.elf" />
+        <map mr="pwm" vaddr="0xff420000" perms="rw" cached="false" />
+        <map mr="grf" vaddr="0xff77e000" perms="rw" cached="false" />
+    </protection_domain>
+</system>
