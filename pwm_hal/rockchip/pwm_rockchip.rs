@@ -1,7 +1,6 @@
 use core::ptr;
 
-use pwm_protocol::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawRequest, PwmRequest, PwmState};
-use sel4_microkit::debug_println;
+use pwm_protocol::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawRequest, PwmState};
 
 // Define the register offsets as a struct
 #[derive(Clone, Copy)]
@@ -115,11 +114,6 @@ impl RockchipPwmHardware {
             let final_value: u32 = (value & 0xFFFF0000) | (modified_value & 0x0000FFFF);
 
             ptr::write_volatile(GRF_GPIO4C_IOMUX_ADDR as *mut u32, final_value);
-
-            let value_after_modify: u32 = ptr::read_volatile(GRF_GPIO4C_IOMUX_ADDR as *const u32);
-
-            debug_println!("iomux value: 0x{:08x}, modified value: 0x{:08x}, 
-                value readback: 0x{:08x}", value, final_value, value_after_modify);
         }
         
         // Configure pull-up/down register
@@ -136,12 +130,7 @@ impl RockchipPwmHardware {
 
             let final_value: u32 = (value & 0xFFFF0000) | (modified_value & 0x0000FFFF);
 
-            let value_after_modify: u32 = ptr::read_volatile(GRF_GPIO4C_P_ADDR as *const u32);
-
             ptr::write_volatile(GRF_GPIO4C_P_ADDR as *mut u32, final_value);
-
-            debug_println!("pull-up/down value: 0x{:08x}, modified value: 0x{:08x}, 
-            value readback: 0x{:08x}", value, final_value, value_after_modify);
         }
     }
 
@@ -198,16 +187,6 @@ impl PwmHal for RockchipPwmHardware {
                 ptr::write_volatile((self.reg_base + PWM_DATA.regs.ctrl) as *mut u32, ctrl);
             }
             self.enabled = true;
-        }
-
-        unsafe {
-            debug_println!("Control register: 0x{:08x}", ptr::read_volatile((self.reg_base + PWM_DATA.regs.ctrl) as *mut u32));
-
-            debug_println!("duty register: 0x{:08x}", ptr::read_volatile((self.reg_base + PWM_DATA.regs.duty) as *mut u32));
-
-            debug_println!("period register: 0x{:08x}", ptr::read_volatile((self.reg_base + PWM_DATA.regs.period) as *mut u32));
-
-            debug_println!("counter register: 0x{:08x}", ptr::read_volatile((self.reg_base + PWM_DATA.regs.cntr) as *mut u32));
         }
         
         Ok(())

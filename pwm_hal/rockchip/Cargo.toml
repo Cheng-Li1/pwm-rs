@@ -10,4 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 pwm-protocol = { path = "../../pwm_protocol" }
-sel4-microkit = { git = "https://github.com/seL4/rust-sel4.git", rev = "ac5627ba7a67e71f33a8eb1c5d05de09bf94ef5e" }
+# sel4-microkit = { git = "https://github.com/seL4/rust-sel4.git", rev = "ac5627ba7a67e71f33a8eb1c5d05de09bf94ef5e" }

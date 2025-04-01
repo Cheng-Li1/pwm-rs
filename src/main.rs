@@ -22,14 +22,48 @@ fn init() -> HandlerImpl {
 
     let mut fan: Fan<RockchipPwmHardware> = Fan::new(pwm);
 
-    debug_println!("Wait for a bit");
+    match fan.config_fan_speed(FanSpeed::Low) {
+        Ok(()) => {}
+        Err(_) => core::panic!("Config fan speed failed"),
+    }
+
+    debug_println!("Fan working at low speed");
+
+    process_wait_unreliable(20_000_000);
+
+    match fan.config_fan_speed(FanSpeed::Medium) {
+        Ok(()) => {}
+        Err(_) => core::panic!("Config fan speed failed"),
+    }
+
+    debug_println!("Fan working at medium speed");
+
+    process_wait_unreliable(20_000_000);
+
+    match fan.config_fan_speed(FanSpeed::High) {
+        Ok(()) => {}
+        Err(_) => core::panic!("Config fan speed failed"),
+    }
+
+    debug_println!("Fan working at high speed");
+
+    process_wait_unreliable(20_000_000);
 
     match fan.config_fan_speed(FanSpeed::Full) {
         Ok(()) => {}
         Err(_) => core::panic!("Config fan speed failed"),
     }
 
-    debug_println!("Test end");
+    debug_println!("Fan working at full speed");
+
+    process_wait_unreliable(20_000_000);
+
+    match fan.config_fan_speed(FanSpeed::Stopped) {
+        Ok(()) => {}
+        Err(_) => core::panic!("Config fan speed failed"),
+    }
+
+    debug_println!("Fan stops");
 
     HandlerImpl {}
 }
