@@ -3,7 +3,7 @@ use core::ptr;
 use pwm_protocol::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawRequest, PwmState};
 
 // Define the register offsets as a struct
-#[derive(Clone, Copy)]
+#[derive(Debug)]
 struct PwmRegisters {
     cntr: u32,   // Counter register offset
     period: u32, // Period register offset
@@ -20,6 +20,7 @@ struct RockchipPwmData {
     enable_conf: u32, // Bitmask for control register
 }
 
+#[derive(Debug)]
 pub struct RockchipPwmHardware {
     reg_base: u32,
     enabled: bool,
@@ -80,7 +81,8 @@ const PWM_DATA: RockchipPwmData = RockchipPwmData {
 };
 
 impl RockchipPwmHardware {
-    pub fn new(register_base: u32) -> Self {
+    /// This function is unsafe as creating multiple RockchipPwmHardware with the same reg base could cause problems
+    pub unsafe fn new(register_base: u32) -> Self {
         let mut hardware: RockchipPwmHardware = RockchipPwmHardware {
             reg_base: register_base,
             enabled: false,
@@ -115,7 +117,7 @@ impl RockchipPwmHardware {
 
             ptr::write_volatile(GRF_GPIO4C_IOMUX_ADDR as *mut u32, final_value);
         }
-        
+
         // Configure pull-up/down register
         unsafe {
             let value: u32 = ptr::read_volatile(GRF_GPIO4C_P_ADDR as *const u32);
@@ -124,7 +126,8 @@ impl RockchipPwmHardware {
 
             ptr::write_volatile(GRF_GPIO4C_P_ADDR as *mut u32, write_enable_value);
 
-            let modified_value: u32 = (write_enable_value & !GRF_GPIO4C3_P) | GRF_GPIO4_C3_PULL_DOWN;
+            let modified_value: u32 =
+                (write_enable_value & !GRF_GPIO4C3_P) | GRF_GPIO4_C3_PULL_DOWN;
 
             ptr::write_volatile(GRF_GPIO4C_P_ADDR as *mut u32, modified_value);
 
@@ -136,7 +139,7 @@ impl RockchipPwmHardware {
 
     /*
     fn clock_probe() {
-        pclk_rkpwm_pmu 
+        pclk_rkpwm_pmu
     }
      */
 }
@@ -145,7 +148,7 @@ impl PwmHal for RockchipPwmHardware {
     fn pwm_get_state(&self) -> Result<PwmState, PwmError> {
         Ok(PwmState {
             enabled: self.enabled,
-            clock_frequency: RK3399_PWM_CLOCKRATE/PWM_DATA.prescaler,
+            clock_frequency: RK3399_PWM_CLOCKRATE / PWM_DATA.prescaler,
             period: self.period,
             duty: self.duty,
             polarity: self.polarity.clone(),
@@ -161,13 +164,11 @@ impl PwmHal for RockchipPwmHardware {
             enable_pwm = true;
             if PWM_DATA.supports_polarity == false && request.polarity != self.polarity {
                 return Err(PwmError::EINVAL);
-            }
-            else {
+            } else {
                 ctrl &= !PWM_POLARITY_MASK;
                 if request.polarity == PwmPolarity::PwmPolarityNormal {
                     ctrl |= PWM_DUTY_POSITIVE | PWM_INACTIVE_NEGATIVE;
-                }
-                else {
+                } else {
                     ctrl |= PWM_DUTY_NEGATIVE | PWM_INACTIVE_POSITIVE;
                 }
                 self.polarity = request.polarity;
@@ -175,10 +176,16 @@ impl PwmHal for RockchipPwmHardware {
         }
 
         unsafe {
-            ptr::write_volatile((self.reg_base + PWM_DATA.regs.period) as *mut u32, request.period_cycle);
+            ptr::write_volatile(
+                (self.reg_base + PWM_DATA.regs.period) as *mut u32,
+                request.period_cycle,
+            );
 
             // Configure duty
-            ptr::write_volatile((self.reg_base + PWM_DATA.regs.duty) as *mut u32, request.duty_cycle);
+            ptr::write_volatile(
+                (self.reg_base + PWM_DATA.regs.duty) as *mut u32,
+                request.duty_cycle,
+            );
         }
 
         if enable_pwm == true {
@@ -188,7 +195,7 @@ impl PwmHal for RockchipPwmHardware {
             }
             self.enabled = true;
         }
-        
+
         Ok(())
     }
 
