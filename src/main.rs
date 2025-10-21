@@ -16,7 +16,7 @@ pub fn process_wait_unreliable(time_ns: u64) {
     }
 }
 
-#[protection_domain(heap_size = 0x10000)]
+#[protection_domain(heap_size = 0x1000)]
 fn init() -> HandlerImpl {
     let pwm: RockchipPwmHardware = unsafe { RockchipPwmHardware::new(FAN_PWM_ADDR) };
 

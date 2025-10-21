@@ -1,6 +1,6 @@
 use core::ptr;
 
-use pwm_protocol::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawRequest, PwmState};
+use pwm_protocol::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawState, PwmState};
 
 // Define the register offsets as a struct
 #[derive(Debug)]
@@ -80,6 +80,8 @@ const PWM_DATA: RockchipPwmData = RockchipPwmData {
     enable_conf: PWM_OUTPUT_LEFT | PWM_LP_DISABLE | PWM_ENABLE | PWM_CONTINUOUS,
 };
 
+// Clock source: VPLL = 24MHz , div=6
+
 impl RockchipPwmHardware {
     /// This function is unsafe as creating multiple RockchipPwmHardware with the same reg base could cause problems
     pub unsafe fn new(register_base: u32) -> Self {
@@ -93,7 +95,7 @@ impl RockchipPwmHardware {
             polarity: PwmPolarity::PwmPolarityNormal,
         };
 
-        let _ = hardware.pwm_disable();
+        let _ = hardware.pwm_apply_state(PwmState::Disable);
 
         Self::pwm_iomux_config();
 
@@ -145,74 +147,82 @@ impl RockchipPwmHardware {
 }
 
 impl PwmHal for RockchipPwmHardware {
-    fn pwm_get_state(&self) -> Result<PwmState, PwmError> {
-        Ok(PwmState {
-            enabled: self.enabled,
-            clock_frequency: RK3399_PWM_CLOCKRATE / PWM_DATA.prescaler,
-            period: self.period,
-            duty: self.duty,
-            polarity: self.polarity.clone(),
-        })
+    fn pwm_get_state(&mut self) -> Result<(PwmState, u32), PwmError> {
+        if self.enabled {
+            Ok((
+                PwmState::Enable(PwmRawState {
+                    polarity: self.polarity.clone(),
+                    period_cycle: self.period,
+                    duty_cycle: self.duty,
+                }),
+                RK3399_PWM_CLOCKRATE / PWM_DATA.prescaler,
+            ))
+        } else {
+            Ok((PwmState::Disable, RK3399_PWM_CLOCKRATE / PWM_DATA.prescaler))
+        }
     }
 
-    fn pwm_raw_request(&mut self, request: PwmRawRequest) -> Result<(), PwmError> {
-        let mut enable_pwm: bool = !self.enabled;
+    fn pwm_apply_state(&mut self, request: PwmState) -> Result<(), PwmError> {
+        match request {
+            PwmState::Enable(pwm_raw_state) => {
+                let mut enable_pwm: bool = !self.enabled;
 
-        let mut ctrl: u32 = PWM_DATA.enable_conf;
+                let mut ctrl: u32 = PWM_DATA.enable_conf;
 
-        if enable_pwm == true || request.polarity != self.polarity {
-            enable_pwm = true;
-            if PWM_DATA.supports_polarity == false && request.polarity != self.polarity {
-                return Err(PwmError::EINVAL);
-            } else {
-                ctrl &= !PWM_POLARITY_MASK;
-                if request.polarity == PwmPolarity::PwmPolarityNormal {
-                    ctrl |= PWM_DUTY_POSITIVE | PWM_INACTIVE_NEGATIVE;
-                } else {
-                    ctrl |= PWM_DUTY_NEGATIVE | PWM_INACTIVE_POSITIVE;
+                if enable_pwm == true || pwm_raw_state.polarity != self.polarity {
+                    enable_pwm = true;
+                    if PWM_DATA.supports_polarity == false
+                        && pwm_raw_state.polarity != self.polarity
+                    {
+                        return Err(PwmError::EINVAL);
+                    } else {
+                        ctrl &= !PWM_POLARITY_MASK;
+                        if pwm_raw_state.polarity == PwmPolarity::PwmPolarityNormal {
+                            ctrl |= PWM_DUTY_POSITIVE | PWM_INACTIVE_NEGATIVE;
+                        } else {
+                            ctrl |= PWM_DUTY_NEGATIVE | PWM_INACTIVE_POSITIVE;
+                        }
+                        self.polarity = pwm_raw_state.polarity;
+                    }
                 }
-                self.polarity = request.polarity;
+
+                unsafe {
+                    ptr::write_volatile(
+                        (self.reg_base + PWM_DATA.regs.period) as *mut u32,
+                        pwm_raw_state.period_cycle,
+                    );
+
+                    // Configure duty
+                    ptr::write_volatile(
+                        (self.reg_base + PWM_DATA.regs.duty) as *mut u32,
+                        pwm_raw_state.duty_cycle,
+                    );
+                }
+
+                if enable_pwm == true {
+                    unsafe {
+                        // Enable the pwm first if not enabled
+                        ptr::write_volatile((self.reg_base + PWM_DATA.regs.ctrl) as *mut u32, ctrl);
+                    }
+                    self.enabled = true;
+                }
+            }
+            PwmState::Disable => {
+                unsafe {
+                    // Reset control register first
+                    ptr::write_volatile((self.reg_base + PWM_DATA.regs.ctrl) as *mut u32, 0);
+
+                    ptr::write_volatile((self.reg_base + PWM_DATA.regs.duty) as *mut u32, 0);
+
+                    ptr::write_volatile((self.reg_base + PWM_DATA.regs.period) as *mut u32, 0);
+                }
+
+                self.enabled = false;
+                self.duty = 0;
+                self.period = 0;
+                self.polarity = PwmPolarity::PwmPolarityNormal;
             }
         }
-
-        unsafe {
-            ptr::write_volatile(
-                (self.reg_base + PWM_DATA.regs.period) as *mut u32,
-                request.period_cycle,
-            );
-
-            // Configure duty
-            ptr::write_volatile(
-                (self.reg_base + PWM_DATA.regs.duty) as *mut u32,
-                request.duty_cycle,
-            );
-        }
-
-        if enable_pwm == true {
-            unsafe {
-                // Enable the pwm first if not enabled
-                ptr::write_volatile((self.reg_base + PWM_DATA.regs.ctrl) as *mut u32, ctrl);
-            }
-            self.enabled = true;
-        }
-
-        Ok(())
-    }
-
-    fn pwm_disable(&mut self) -> Result<(), PwmError> {
-        unsafe {
-            // Reset control register first
-            ptr::write_volatile((self.reg_base + PWM_DATA.regs.ctrl) as *mut u32, 0);
-
-            ptr::write_volatile((self.reg_base + PWM_DATA.regs.duty) as *mut u32, 0);
-
-            ptr::write_volatile((self.reg_base + PWM_DATA.regs.period) as *mut u32, 0);
-        }
-
-        self.enabled = false;
-        self.duty = 0;
-        self.period = 0;
-        self.polarity = PwmPolarity::PwmPolarityNormal;
 
         Ok(())
     }

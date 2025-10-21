@@ -1,4 +1,4 @@
-use crate::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawRequest, PwmState};
+use crate::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawState, PwmState};
 
 // Well, most of the fan should be falling in the range
 // But could there be weird fans???
@@ -29,18 +29,18 @@ impl<T: PwmHal> Fan<T> {
     pub fn config_fan_speed(&mut self, speed: FanSpeed) -> Result<(), PwmError> {
         match speed {
             // Disable the PWM if fan is stopped
-            FanSpeed::Stopped => self.pwm.pwm_disable(),
+            FanSpeed::Stopped => self.pwm.pwm_apply_state(PwmState::Disable),
             _ => {
-                let status: PwmState = self.pwm.pwm_get_state()?;
+                let (_, clock) = self.pwm.pwm_get_state()?;
                 // Figure out if it is PWM signal being too slow
-                let period: u32 = status.clock_frequency / COMMON_FAN_FREQ;
+                let period: u32 = clock / COMMON_FAN_FREQ;
                 let duty: u32 = (period * (speed as u32)) / (FanSpeed::Full as u32);
-                let state: PwmRawRequest = PwmRawRequest {
+                let state = PwmRawState {
                     polarity: PwmPolarity::PwmPolarityNormal,
                     period_cycle: period,
                     duty_cycle: duty,
                 };
-                self.pwm.pwm_raw_request(state)
+                self.pwm.pwm_apply_state(PwmState::Enable(state))
             }
         }
     }
