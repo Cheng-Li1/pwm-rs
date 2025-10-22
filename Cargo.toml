@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 sel4-microkit = { git = "https://github.com/seL4/rust-sel4.git", rev = "ac5627ba7a67e71f33a8eb1c5d05de09bf94ef5e" }
-pwm-hal = { path = "pwm_hal/rockchip" }
-pwm-protocol = { path = "pwm_protocol" }
+pwm-hal = { path = "hal/rockchip" }
+pwm-protocol = { path = "core" }
