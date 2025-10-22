@@ -1,3 +1,6 @@
+// Copyright 2025, UNSW
+// SPDX-License-Identifier: BSD-2-Clause
+
 #[derive(Debug)]
 pub enum PwmError {
     EINVAL,
@@ -28,7 +31,6 @@ pub struct PwmRawState {
 /// @period_ns: PWM period (in nanoseconds)
 /// @duty_ns: PWM duty cycle (in nanoseconds)
 /// @polarity: PWM polarity
-/// @enabled: PWM enabled status
 #[derive(Debug)]
 pub struct PwmRequest {
     pub period_ns: u32,

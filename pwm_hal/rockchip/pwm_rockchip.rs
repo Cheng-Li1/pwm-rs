@@ -1,3 +1,8 @@
+// Copyright 2025, UNSW
+// SPDX-License-Identifier: BSD-2-Clause
+
+#![allow(dead_code)]
+
 use core::ptr;
 
 use pwm_protocol::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawState, PwmState};
@@ -138,12 +143,6 @@ impl RockchipPwmHardware {
             ptr::write_volatile(GRF_GPIO4C_P_ADDR as *mut u32, final_value);
         }
     }
-
-    /*
-    fn clock_probe() {
-        pclk_rkpwm_pmu
-    }
-     */
 }
 
 impl PwmHal for RockchipPwmHardware {

@@ -1,3 +1,6 @@
+// Copyright 2025, UNSW
+// SPDX-License-Identifier: BSD-2-Clause
+
 use crate::pwm_trait::{PwmError, PwmHal, PwmPolarity, PwmRawState, PwmState};
 
 // Well, most of the fan should be falling in the range
